@@ -13,4 +13,3 @@ panic = "abort"
 
 [dependencies]
 mysql="*"
-jlrs="*"
