@@ -50,6 +50,7 @@ end
 
 
 ```julia
+#=
 mutable struct Value
     tag::Cint
     val_ptr::Ptr{Cvoid}
@@ -58,6 +59,12 @@ end
 mutable struct ValueFFI
     val
     val_ffi::Value
+end
+=#
+
+mutable struct ValueFFI
+    tag::Cint
+    val_ptr::Ptr{Cvoid}
 end
 
 function type_to_num(val)
@@ -77,19 +84,40 @@ function type_to_num(val)
     elseif type==TimeFFI
         return 6
     else
-        error("Unsupported type: ${type}")
+        error("Unsupported type: $(type)")
     end
 end
 
+#=
 function val_to_objref(val)
     if isimmutable(val)
         return Ref(val)|>pointer_from_objref
     else
         return pointer_from_objref(val)
     end
+end
+#No, no, no. Absolutely not like this. This function will copy the val if immutable, and give the copied value's address-which will be gone after the function is finished!
+=#
+
+mutable struct Value
+    val
+    ref
+end
+
+Value(val)=begin
+    obj=Value(val, nothing)
+    obj.ref=Ref(obj.val)|>pointer_from_objref
+    return obj
+end
+
+# But this does work. How about that!
 
 # Keeps the value inside, to prevent gc of the value until the instance is out of scope.
-ValueFFI(val)=ValueFFI(val, Value(type_to_num(val), val_to_objref(val)))
+ValueFFI(val)=begin
+    x=Value(val)
+    ValueFFI(type_to_num(val), x.ref)
+end
+
 
 
 ```
