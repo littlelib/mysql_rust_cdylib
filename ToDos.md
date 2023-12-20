@@ -90,7 +90,7 @@ end
 
 #=
 function val_to_objref(val)
-    if isimmutable(val)
+    if isimmutable(val).
         return Ref(val)|>pointer_from_objref
     else
         return pointer_from_objref(val)
