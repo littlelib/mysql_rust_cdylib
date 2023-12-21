@@ -2,6 +2,7 @@ use std::{boxed::Box, ffi::{CString, c_char, c_int}, marker::Sized, convert::Fro
 use mysql::{*, prelude::{*, Queryable}};
 
 mod connections;
+pub use connections::*;
 
 #[repr(C)]
 pub enum ConnResult {

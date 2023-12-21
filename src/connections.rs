@@ -17,6 +17,7 @@ pub enum ConnResult {
     Success(mysql::PooledConn)
 }
 
+
 #[no_mangle]
 pub extern "C" fn get_pool_from_url(url_as_bytes: *const (c_int, *const u8))->*mut PoolResult {
     let err=Box::into_raw(Box::new(PoolResult::Error));
@@ -48,6 +49,12 @@ pub extern "C" fn get_pool_from_url(url_as_bytes: *const (c_int, *const u8))->*m
 }
 
 #[no_mangle]
+pub extern "C" fn drop_pool(pool: *mut PoolResult) {
+    let _=unsafe {Box::from_raw(pool)};
+}
+
+
+#[no_mangle]
 pub extern "C" fn get_conn_from_pool(pool: *mut PoolResult)->*mut ConnResult {
     let err=Box::into_raw(Box::new(ConnResult::Error));
     let pool_result=unsafe {&*pool};
@@ -62,6 +69,11 @@ pub extern "C" fn get_conn_from_pool(pool: *mut PoolResult)->*mut ConnResult {
             }
         },
     }
+}
+
+#[no_mangle]
+pub extern "C" fn drop_conn (conn: *mut ConnResult) {
+    let _=unsafe {Box::from_raw(conn)};
 }
 
 #[no_mangle]
