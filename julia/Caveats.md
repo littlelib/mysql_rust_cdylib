@@ -1,0 +1,5 @@
+- Rust Bool != C Bool != Julia Bull
+- Julia vector of stucts != C or rust vector(array) of structs
+    - Julia: internally a vector of **pointer** to structs
+    - C/Rust: internally a vector of **struct** themselves
+  - > To ensure compatibility to julia, ffi values should be wrapped in a box

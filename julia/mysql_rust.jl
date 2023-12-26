@@ -2,30 +2,31 @@
 
 using Dates
 
-abstract type FFIType end
+abstract type FFIReceived end
+abstract type FFITransmitted end
 
-mutable struct Value <: FFIType
+mutable struct Value <: FFITransmitted
     tag::Cint
     val_ref::Ref
 end
 
-mutable struct ValueFFI <: FFIType
+mutable struct ValueFFI <: FFIReceived
     tag::Cint
     val_ptr::Ptr{Cvoid}
 end
 
-mutable struct DateFFI <: FFIType
+mutable struct DateFFI 
     y::UInt16
     m::UInt8
     d::UInt8
     h::UInt8
     mi::UInt8
     s::UInt8
-    ms::UInt8
+    ms::UInt32
 end
 
-mutable struct TimeFFI <: FFIType
-    negative::Bool
+mutable struct TimeFFI 
+    negative::Int32
     d::UInt32
     h::UInt8
     mi::UInt8
@@ -57,6 +58,14 @@ MySQLTime(x::Dates.Millisecond)=begin
         push!(vals, share)
     end
     MySQLTime(negative, UInt32(vals[1]), UInt8(vals[2]), UInt8(vals[3]), UInt8(vals[4]), UInt32(remainder))
+end
+
+MySQLTime(x::TimeFFI)=begin
+    MySQLTime(Bool(x.negative), x.d, x.h, x.mi, x.s, x.ms)
+end
+
+TimeFFI(x::MySQLTime)=begin
+    TimeFFI(Int32(x.nagative), x.d, x.h, x.mi, x.s, x.ms)
 end
 
 function type_to_num(val)
@@ -94,33 +103,73 @@ DateFFI(date::DateTime)=begin
 end
 
 Dates.DateTime(x::DateFFI)=begin
-    
+    Dates.DateTime(x.y, x.m, x.d, x.h, x.mi, x.s, x.ms)
 end
 
-mutable struct ByteString
+mutable struct ByteStringFFI <: FFIReceived
     length::Cint
     vals::Ptr{UInt8}
 end
 
-Base.String(x::ByteString)=begin
+mutable struct ByteString <: FFITransmitted
+    length::Cint
+    vals::Ref
+end
+
+Base.String(x::ByteStringFFI)=begin
     bytes=unsafe_wrap(Array, x.vals, x.length)
     String(bytes)
 end
 
 ByteString(x::String)=begin
     bytes=Vector{UInt8}(x)
-    value=Value(bytes)
-    ByteString(length(bytes),value.ref)
+    ByteString(length(bytes), Ref(bytes))
 end
 
-mutable struct ArrayStruct
+mutable struct ArrayStructFFI
     length::Cint
     size::Cint
     vals::Ptr{Cvoid}
 end
 
+mutable struct ArrayStruct
+    length::Cint
+    size::Cint
+    vals::Ref
+end
+
+function cast(x::ValueFFI)
+    if x.tag==0
+        missing
+    elseif x.tag==1
+        reinterpret(Ptr{ByteStringFFI}, x.val_ptr)|>unsafe_load|>Base.String
+    elseif x.tag==2
+        reinterpret(Ptr{Int64}, x.val_ptr)|>unsafe_load
+    elseif x.tag==3
+        reinterpret(Ptr{UInt64}, x.val_ptr)|>unsafe_load
+    elseif x.tag==4
+        reinterpret(Ptr{Float32}, x.val_ptr)|>unsafe_load
+    elseif x.tag==5
+        reinterpret(Ptr{Float64}, x.val_ptr)|>unsafe_load
+    elseif x.tag==6
+        reinterpret(Ptr{DateFFI}, x.val_ptr)|>unsafe_load|>Dates.DateTime
+    elseif x.tag==7
+        reinterpret(Ptr{TimeFFI}, x.val_ptr)|>unsafe_load|>MySQLTime
+    else
+        error("Unsupported tag value")
+    end
+end
+
+function cast(x::ArrayStructFFI)
+    array_vals_ptr=reinterpret(Ptr{Ptr{ValueFFI}}, x.vals)
+    unsafe_wrap(Array, array_vals_ptr, array.length)|>
+    x->map(y->y|>unsafe_load, x)|>
+    x->map(y->cast(y), x)
+end
+
+
 cd(@__DIR__)
-array_ptr=@ccall "../target/debug/libmysql_native".rust_to_julia()::Ptr{ArrayStruct}
+array_ptr=@ccall "../target/debug/libmysql_native".rust_to_julia()::Ptr{ArrayStructFFI}
 array=unsafe_load(array_ptr)
 println(array)
 array_vals_ptr=Base.unsafe_convert(Ptr{Ptr{ValueFFI}}, array.vals)

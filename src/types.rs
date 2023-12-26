@@ -1,4 +1,4 @@
-use std::ffi::c_int;
+use std::ffi::{c_int};
 use crate::Value;
 
 #[derive(Clone, Debug)]
@@ -84,7 +84,7 @@ pub enum ValueFFI {
     /// year, month, day, hour, minutes, seconds, micro seconds
     Date(Box<(u16, u8, u8, u8, u8, u8, u32)>),
     /// is negative, days, hours, minutes, seconds, micro seconds
-    Time(Box<(bool, u32, u8, u8, u8, u32)>),
+    Time(Box<(i32, u32, u8, u8, u8, u32)>),
 }
 
 impl From<Value> for ValueFFI {
@@ -97,7 +97,7 @@ impl From<Value> for ValueFFI {
             Value::Float(val)=>ValueFFI::Float(Box::new(val)),
             Value::Double(val)=>ValueFFI::Double(Box::new(val)),
             Value::Date(a,b,c,d,e,f,g)=>ValueFFI::Date(Box::new((a,b,c,d,e,f,g))),
-            Value::Time(a,b,c,d,e,f)=>ValueFFI::Time(Box::new((a,b,c,d,e,f))),
+            Value::Time(a,b,c,d,e,f)=>ValueFFI::Time(Box::new(({match a {false=>0, true=>1}},b,c,d,e,f))),
         }
     }
 }
@@ -117,7 +117,7 @@ impl From<ValueFFI> for Value {
             },
             ValueFFI::Time(val)=>{
                 let (a,b,c,d,e,f)=(*val).clone();
-                Value::Time(a,b,c,d,e,f)
+                Value::Time(match a {0=>false, _=>true},b,c,d,e,f)
             },
         }
     }
