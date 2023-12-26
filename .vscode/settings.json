@@ -1,4 +1,4 @@
 {
     "rust-analyzer.checkOnSave": false,
-    "julia.environmentPath": "/home/llib/projects/mysql/mysql_rust_cdylib/mysql_rust_cdylib"
+    "julia.environmentPath": "/home/llib/projects/mysql_rust_cdylib"
 }
