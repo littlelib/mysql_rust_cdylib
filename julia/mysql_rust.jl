@@ -70,7 +70,7 @@ end
 
 function type_to_num(val)
     type=typeof(val)
-    if type==Nothing
+    if type==Nothing || type==Missing
         return 0
     elseif type==String
         return 1
@@ -82,22 +82,17 @@ function type_to_num(val)
         return 4
     elseif type==Float64
         return 5
-    elseif type==DateFFI
+    elseif type==Dates.DateTime
         return 6
-    elseif type==TimeFFI
+    elseif type==MySQLTime
         return 7
     else
         error("Unsupported type: $(type)")
     end
 end
 
-Value(val)=begin
-    tag=type_to_num(val)
-    ref=Ref(val)
-    Value(tag, ref)
-end
 
-DateFFI(date::DateTime)=begin
+DateFFI(date::Dates.DateTime)=begin
     functions=(Dates.year, Dates.month, Dates.day, Dates.hour, Dates.minute, Dates.second, Dates.millisecond)
     DateFFI((map(y->y(date), functions))...)
 end
@@ -137,6 +132,12 @@ mutable struct ArrayStruct
     size::Cint
     vals::Ref
 end
+ArrayStruct(x::Vector)=begin
+    ref=map(y->Value(y), x)|>Ref
+    size=sizeof(Value)
+    len=length(x)
+    ArrayStruct(len, size, ref)
+end
 
 function cast(x::ValueFFI)
     if x.tag==0
@@ -160,6 +161,23 @@ function cast(x::ValueFFI)
     end
 end
 
+Value(x::Missing)=Value(type_to_num(x), Ref(nothing))
+Value(x::String)=begin
+    bytestring=ByteString(x)
+    Value(type_to_num(x), Ref(bytestring))
+end
+Value(x::Union{Int64, UInt64, Float32, Float64})=Value(type_to_num(x), Ref(x))
+Value(x::Dates.DateTime)=begin
+    dateffi=DateFFI(x)
+    Value(type_to_num(x), Ref(dateffi))
+end
+Value(x::MySQLTime)=begin
+    timeffi=TimeFFI(x)
+    Value(type_to_num(x), Ref(timeffi))
+end
+
+
+
 function cast(x::ArrayStructFFI)
     array_vals_ptr=reinterpret(Ptr{Ptr{ValueFFI}}, x.vals)
     unsafe_wrap(Array, array_vals_ptr, array.length)|>
@@ -176,3 +194,4 @@ array_vals_ptr=Base.unsafe_convert(Ptr{Ptr{ValueFFI}}, array.vals)
 vals=unsafe_wrap(Array, array_vals_ptr, array.length)|>
 x->map(y->y|>unsafe_load, x)
 
+array=ArrayStruct([1,2,"asdfasf", missing, Dates.now()])

@@ -4,9 +4,9 @@ use crate::Value;
 #[derive(Clone, Debug)]
 #[repr(C)]
 pub struct ArrayStruct<T> {
-    length: c_int,
+    pub length: c_int,
     size: c_int,
-    vals: *mut [Box<T>]
+    pub vals: *mut [Box<T>]
 }
 
 impl<T> From<Vec<T>> for ArrayStruct<T> {

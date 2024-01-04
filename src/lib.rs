@@ -34,3 +34,18 @@ pub extern "C" fn rust_to_julia()->*mut ArrayStruct<ValueFFI> {
     let vec=vec![ValueFFI::NULL, ValueFFI::Bytes(Box::new(ByteString::from("this is the end"))), ValueFFI::Int(Box::new(64 as i64)), ValueFFI::UInt(Box::new(64 as u64)), ValueFFI::Float(Box::new(32.0 as f32)), ValueFFI::Double(Box::new(64.0 as f64)), ValueFFI::Date(Box::new((1,1,1,1,1,1,1))), ValueFFI::Time(Box::new((0,1,1,1,1,1)))];
     Box::into_raw(Box::new(ArrayStruct::from(vec)))
 }
+
+#[no_mangle]
+pub extern "C" fn julia_to_rust(vals: *mut ArrayStruct<ValueFFI>) {
+    let v=unsafe {&*vals};
+    let s=unsafe {std::slice::from_raw_parts((*v).vals as *mut Box<ValueFFI>, v.length as usize)};
+    for i in s {
+        println!("{:?}", i);
+    }
+}
+
+#[no_mangle]
+pub extern "C" fn julia_to_rust_2(val: *mut ValueFFI) {
+    let v=unsafe {&*val};
+    println!("{:?}", v);
+}
